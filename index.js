@@ -14,7 +14,7 @@ const SOURCES = {
     dflix: { name: 'Dflix', urls: ['https://movies.discoveryftp.net', 'https://cdn1.discoveryftp.net', 'https://cdn2.discoveryftp.net'] },
     dhakaflix: { name: 'DhakaFlix', urls: ['http://172.16.50.14/DHAKA-FLIX-14/', 'http://172.16.50.7/DHAKA-FLIX-7/', 'http://172.16.50.12/DHAKA-FLIX-12/', 'http://172.16.50.9/DHAKA-FLIX-9/'] },
     roarzone: { name: 'RoarZone', urls: ['https://play.roarzone.info'] },
-    ftpbd: { name: 'FTPBD', urls: ['https://server2.ftpbd.net/FTP-2', 'https://server3.ftpbd.net/FTP-3', 'https://server4.ftpbd.net/FTP-4', 'https://server5.ftpbd.net/FTP-5', 'https://server7.ftpbd.net/FTP-7', 'https://server1.ftpbd.net/FTP-1'] },
+    ftpbd: { name: 'FTPBD', urls: ['https://server2.ftpbd.net/FTP-2', 'https://server3.ftpbd.net/FTP-3', 'https://server4.ftpbd.net/FTP-4', 'https://server5.ftpbd.net/FTP-5', 'https://server7.ftpbd.net/FTP-7', 'https://server1.ftpbd.net/FTP-1', 'http://ftp8.circleftp.net/FILE'] },
     circleftp: { name: 'CircleFTP', urls: ['http://new.circleftp.net'] },
     iccftp: { name: 'ICC FTP', urls: ['http://10.16.100.244'] }
 };

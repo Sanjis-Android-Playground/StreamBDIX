@@ -2,23 +2,18 @@
 const { extractQuality, titlesMatch, axios } = require('./utils');
 const SOURCE_NAME = 'FTPBD';
 const SERVERS = [
-    { url: 'https://server2.ftpbd.net/FTP-2', name: 'FTP-2', basePath: '/FTP-2' },
-    { url: 'https://server3.ftpbd.net/FTP-3', name: 'FTP-3', basePath: '/FTP-3' },
-    { url: 'https://server4.ftpbd.net/FTP-4', name: 'FTP-4', basePath: '/FTP-4' },
-    { url: 'https://server5.ftpbd.net/FTP-5', name: 'FTP-5', basePath: '/FTP-5' },
-    { url: 'https://server7.ftpbd.net/FTP-7', name: 'FTP-7', basePath: '/FTP-7' },
-    { url: 'https://server1.ftpbd.net/FTP-1', name: 'FTP-1', basePath: '/FTP-1' }
+    { url: 'https://server2.ftpbd.net/FTP-2', name: 'FTP-2' },
+    { url: 'https://server3.ftpbd.net/FTP-3', name: 'FTP-3' },
+    { url: 'https://server4.ftpbd.net/FTP-4', name: 'FTP-4' },
+    { url: 'https://server5.ftpbd.net/FTP-5', name: 'FTP-5' },
+    { url: 'https://server7.ftpbd.net/FTP-7', name: 'FTP-7' },
+    { url: 'https://server1.ftpbd.net/FTP-1', name: 'FTP-1' },
+    { url: 'http://ftp8.circleftp.net/FILE', name: 'FTP8' }
 ];
 const CATEGORIES = {
     movie: ['English Movies', 'Hindi Movies', 'South Indian Movies', 'Foreign Language Movies', 'Bangla Collection', 'Animation Movies', '3D Movies'],
-    series: ['English-Foreign-TV-Series', 'Hindi TV Series', 'South Indian TV Serias', 'Anime--Cartoon-TV-Series']
+    series: ['English-Foreign-TV-Series', 'Hindi TV Series', 'South Indian TV Serias', 'Anime--Cartoon-TV-Series', 'Indian TV Shows', 'TV Shows']
 };
-
-function getNameFromPath(href) {
-    const decoded = decodeURIComponent(href);
-    const parts = decoded.split('/').filter(p => p);
-    return parts[parts.length - 1] || '';
-}
 
 function extractTitleAndYear(filename) {
     let match = filename.match(/^(.+?)\s*\((\d{4})\)/);
@@ -33,7 +28,11 @@ function extractTitleAndYear(filename) {
 }
 
 function extractSeasonEpisode(filename) {
-    const match = filename.match(/S(\d+)\D*E(\d+)/i);
+    let match = filename.match(/S(\d+)[\s.\-]*EP\.?(\d+)/i);
+    if (match) return { season: parseInt(match[1]), episode: parseInt(match[2]) };
+    match = filename.match(/Season[\s\-]*(\d+)[\s\S]*?Ep[\s\-]*(\d+)/i);
+    if (match) return { season: parseInt(match[1]), episode: parseInt(match[2]) };
+    match = filename.match(/(\d+)x(\d+)/i);
     if (match) return { season: parseInt(match[1]), episode: parseInt(match[2]) };
     return null;
 }
@@ -58,90 +57,12 @@ function parseH5aiTable(html, baseUrl) {
             fullUrl = baseUrl.replace(/\/$/, '') + '/' + href;
         }
         if (row.includes('folder.png')) {
-            folders.push({ name, url: fullUrl, href });
+            folders.push({ name, url: fullUrl });
         } else if (href.match(/\.(mkv|mp4|avi)$/i)) {
-            files.push({ name, url: fullUrl, href });
+            files.push({ name, url: fullUrl });
         }
     }
     return { folders, files };
-}
-
-async function searchServer(server, type, searchTerm, season, episode) {
-    const results = [];
-    const categories = CATEGORIES[type] || CATEGORIES.movie;
-    const searchLower = searchTerm.toLowerCase();
-    const searchTerms = getSearchTerms(searchTerm);
-
-    for (const cat of categories) {
-        const catUrl = server.url + '/' + encodeURIComponent(cat) + '/';
-        try {
-            const response = await axios.get(catUrl, { timeout: 10000 });
-            const { folders: yearFolders } = parseH5aiTable(response.data, catUrl);
-
-            for (const yearFolder of yearFolders.slice(0, 20)) {
-                if (results.length >= 10) break;
-                try {
-                    const yearResponse = await axios.get(yearFolder.url, { timeout: 10000 });
-                    const { folders: movieFolders, files } = parseH5aiTable(yearResponse.data, yearFolder.url);
-
-                    for (const file of files) {
-                        if (results.length >= 10) break;
-                        const { title, year } = extractTitleAndYear(file.name);
-                        const matchScore = titlesMatch(title, searchTerm) ? 10 : 0;
-                        if (matchScore > 0) {
-                            results.push({
-                                name: SOURCE_NAME,
-                                title: `${server.name} - ${extractQuality(file.name)}`,
-                                url: file.url
-                            });
-                        }
-                    }
-
-                    for (const movieFolder of movieFolders.slice(0, 30)) {
-                        if (results.length >= 10) break;
-                        const movieName = movieFolder.name.toLowerCase();
-                        let matched = false;
-                        for (const term of searchTerms) {
-                            if (movieName.includes(term.toLowerCase())) {
-                                matched = true;
-                                break;
-                            }
-                        }
-                        if (!matched && !titlesMatch(movieFolder.name, searchTerm)) continue;
-
-                        try {
-                            const movieResponse = await axios.get(movieFolder.url, { timeout: 10000 });
-                            const { files: movieFiles } = parseH5aiTable(movieResponse.data, movieFolder.url);
-
-                            for (const file of movieFiles) {
-                                if (results.length >= 10) break;
-                                const { title, year } = extractTitleAndYear(file.name);
-                                const seInfo = extractSeasonEpisode(file.name);
-                                if (type === 'movie') {
-                                    if (titlesMatch(title, searchTerm)) {
-                                        results.push({
-                                            name: SOURCE_NAME,
-                                            title: `${server.name} - ${extractQuality(file.name)}`,
-                                            url: file.url
-                                        });
-                                    }
-                                } else if (seInfo) {
-                                    if (seInfo.season === season && seInfo.episode === episode) {
-                                        results.push({
-                                            name: SOURCE_NAME,
-                                            title: `${server.name} - ${extractQuality(file.name)}`,
-                                            url: file.url
-                                        });
-                                    }
-                                }
-                            }
-                        } catch (e) {}
-                    }
-                } catch (e) {}
-            }
-        } catch (e) {}
-    }
-    return results;
 }
 
 function getSearchTerms(title) {
@@ -154,32 +75,91 @@ function getSearchTerms(title) {
     return [...new Set(terms)];
 }
 
+function titleMatchesFolder(folderName, searchTerms, searchTerm) {
+    const fnLower = folderName.toLowerCase();
+    if (folderName.match(/^\d{4}$/)) return true;
+    for (const term of searchTerms) {
+        if (fnLower.includes(term.toLowerCase())) return true;
+    }
+    return titlesMatch(folderName, searchTerm);
+}
+
+async function findMatchingFiles(folder, searchTerms, searchTerm, type, season, episode) {
+    const matches = [];
+    try {
+        const response = await axios.get(folder.url, { timeout: 10000 });
+        const { folders: subFolders, files } = parseH5aiTable(response.data, folder.url);
+
+        for (const file of files) {
+            if (type === 'movie') {
+                const { title } = extractTitleAndYear(file.name);
+                if (titlesMatch(title, searchTerm)) {
+                    matches.push({ name: SOURCE_NAME, title: `${folder.name.split('/').pop().split('/').pop()} - ${extractQuality(file.name)}`, url: file.url });
+                }
+            } else {
+                const seInfo = extractSeasonEpisode(file.name);
+                if (seInfo && seInfo.season === season && seInfo.episode === episode) {
+                    matches.push({ name: SOURCE_NAME, title: `${folder.name.split('/').pop()} - ${extractQuality(file.name)}`, url: file.url });
+                }
+            }
+        }
+
+        for (const subFolder of subFolders) {
+            const subName = subFolder.name;
+            const isYearFolder = subName.match(/^\d{4}$/) || subName.includes('Season');
+            const isMatchedFolder = titleMatchesFolder(subName, searchTerms, searchTerm);
+
+            if (isYearFolder || isMatchedFolder) {
+                const subMatches = await findMatchingFiles(subFolder, searchTerms, searchTerm, type, season, episode);
+                matches.push(...subMatches);
+            }
+        }
+    } catch (e) {}
+    return matches;
+}
+
+async function searchServer(server, type, searchTerm, season, episode) {
+    const results = [];
+    const categories = CATEGORIES[type] || CATEGORIES.movie;
+    const searchTerms = getSearchTerms(searchTerm);
+
+    for (const cat of categories) {
+        const catUrl = server.url + '/' + encodeURIComponent(cat) + '/';
+        try {
+            const response = await axios.get(catUrl, { timeout: 10000 });
+            const { folders: topFolders } = parseH5aiTable(response.data, catUrl);
+
+            for (const folder of topFolders) {
+                if (results.length >= 10) break;
+                if (titleMatchesFolder(folder.name, searchTerms, searchTerm)) {
+                    const matches = await findMatchingFiles(folder, searchTerms, searchTerm, type, season, episode);
+                    for (const m of matches) {
+                        if (results.length >= 10) break;
+                        results.push({ name: SOURCE_NAME, title: `${server.name} - ${m.title}`, url: m.url });
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+    return results;
+}
+
 module.exports = {
     name: SOURCE_NAME,
     types: ['movie', 'series'],
     async getStreams(type, meta, season, episode) {
-        const imdbId = meta.imdb_id || meta.id;
         const name = meta.name || '';
         if (!name) return [];
-        if (type === 'movie' && imdbId && imdbId.startsWith('tt')) {
-            const dflixResults = await searchMovieByImdb(imdbId, name);
-            if (dflixResults.length > 0) return dflixResults;
-        }
         const allResults = [];
         for (const server of SERVERS) {
             const serverResults = await searchServer(server, type, name, season, episode);
             allResults.push(...serverResults);
         }
         const seen = new Set();
-        const unique = allResults.filter(r => {
+        return allResults.filter(r => {
             if (seen.has(r.url)) return false;
             seen.add(r.url);
             return true;
-        });
-        return unique.slice(0, 10);
+        }).slice(0, 10);
     }
 };
-
-async function searchMovieByImdb(imdbId, name) {
-    return [];
-}
