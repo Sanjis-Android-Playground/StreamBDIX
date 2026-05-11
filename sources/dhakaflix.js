@@ -2,8 +2,14 @@
 const { extractQuality, titlesMatch, axios } = require('./utils');
 const SOURCE_NAME = 'DHAKAFLIX';
 const SERVERS = {
-    movies: { url: 'http://172.16.50.14', name: 'DHAKA-FLIX-14', types: ['movie'] },
-    series: { url: 'http://172.16.50.12', name: 'DHAKA-FLIX-12', types: ['series'] }
+    movies: [
+        { url: 'http://172.16.50.14', name: 'DHAKA-FLIX-14', label: '14' },
+        { url: 'http://172.16.50.7', name: 'DHAKA-FLIX-7', label: '7' }
+    ],
+    series: [
+        { url: 'http://172.16.50.12', name: 'DHAKA-FLIX-12', label: '12' },
+        { url: 'http://172.16.50.9', name: 'DHAKA-FLIX-9', label: '9' }
+    ]
 };
 function getNameFromPath(href) {
     const decoded = decodeURIComponent(href);
@@ -47,9 +53,19 @@ async function searchServer(query, server) {
                 href: item.href,
                 name: getNameFromPath(item.href),
                 isFile: item.size !== null,
-                fullUrl: server.url + item.href
+                fullUrl: server.url + item.href,
+                serverLabel: server.label
             }));
     } catch { return null; }
+}
+async function searchAllServers(query, servers) {
+    const results = await Promise.all(servers.map(s => searchServer(query, s)));
+    const combined = [];
+    for (const r of results) {
+        if (r !== null) combined.push(...r);
+        else return null;
+    }
+    return combined;
 }
 function findMovieStreams(results, metaName, metaYear) {
     const streams = [];
@@ -94,10 +110,10 @@ module.exports = {
     name: SOURCE_NAME,
     types: ['movie', 'series'],
     async getStreams(type, meta, season, episode) {
-        const server = type === 'movie' ? SERVERS.movies : SERVERS.series;
+        const servers = type === 'movie' ? SERVERS.movies : SERVERS.series;
         const searchTerms = getSearchTerms(meta.name);
         for (const term of searchTerms) {
-            const results = await searchServer(term, server);
+            const results = await searchAllServers(term, servers);
             if (results === null) return [];
             if (results.length > 0) {
                 if (type === 'movie') return findMovieStreams(results, meta.name, meta.year);

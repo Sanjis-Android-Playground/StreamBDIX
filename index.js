@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 7001;
 
 const SOURCES = {
     dflix: { name: 'Dflix', urls: ['https://movies.discoveryftp.net', 'https://cdn1.discoveryftp.net', 'https://cdn2.discoveryftp.net'] },
-    dhakaflix: { name: 'DhakaFlix', urls: ['http://172.16.50.14/DHAKA-FLIX-14/', 'http://172.16.50.12/DHAKA-FLIX-12/', 'http://172.16.50.12'] },
+    dhakaflix: { name: 'DhakaFlix', urls: ['http://172.16.50.14/DHAKA-FLIX-14/', 'http://172.16.50.7/DHAKA-FLIX-7/', 'http://172.16.50.12/DHAKA-FLIX-12/', 'http://172.16.50.9/DHAKA-FLIX-9/'] },
     roarzone: { name: 'RoarZone', urls: ['https://play.roarzone.info'] },
     ftpbd: { name: 'FTPBD', urls: ['http://media.ftpbd.net:8096'] },
     circleftp: { name: 'CircleFTP', urls: ['http://new.circleftp.net'] },
